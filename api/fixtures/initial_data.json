@@ -1,0 +1,64 @@
+{
+    "accounts": [
+        {
+            "wallet_address": "EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4",
+            "sol_balance": "15.5"
+        },
+        {
+            "wallet_address": "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
+            "sol_balance": "8.2"
+        },
+        {
+            "wallet_address": "3KjdURz5fZCPeutRQxAVPtgzAPXC7zKdnW6FWcDP5yQv",
+            "sol_balance": "25.7"
+        },
+        {
+            "wallet_address": "HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH",
+            "sol_balance": "125.45"
+        },
+        {
+            "wallet_address": "2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq",
+            "sol_balance": "38.72"
+        },
+        {
+            "wallet_address": "5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E",
+            "sol_balance": "892.31"
+        }
+    ],
+    "tokenprices": [
+        {
+            "token_address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "price_usd": "1.00",
+            "token_symbol": "USDC"
+        },
+        {
+            "token_address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+            "price_usd": "0.99",
+            "token_symbol": "USDT"
+        },
+        {
+            "token_address": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+            "price_usd": "35.50",
+            "token_symbol": "mSOL"
+        },
+        {
+            "token_address": "So11111111111111111111111111111111111111112",
+            "price_usd": "101.25",
+            "token_symbol": "SOL"
+        },
+        {
+            "token_address": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+            "price_usd": "55.82",
+            "token_symbol": "BONK"
+        }
+    ],
+    "tokenholdings": [
+        {
+            "wallet_address": "EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4",
+            "token_address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "token_symbol": "USDC",
+            "amount": "1000.00",
+            "value_usd": "1000.00"
+        }
+    ]
+}
