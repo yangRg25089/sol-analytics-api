@@ -1,160 +1,226 @@
-from rest_framework import viewsets, generics
-from rest_framework.response import Response
-from .serializers import AccountSerializer, TransactionSerializer
-from .models import Account, Transaction, TokenHolding, NFTHolding, TokenPrice
-from django.db.models import Sum
-from django.utils import timezone
-from datetime import timedelta
+"""
+视图模块：处理所有API请求的核心逻辑
+包含：认证、钱包连接、代币管理等功能
+"""
 
-class AccountViewSet(viewsets.ViewSet):
-    def retrieve(self, request, wallet_address=None):
-        account = Account.objects.get(wallet_address=wallet_address)
-        serializer = AccountSerializer(account)
+from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserSerializer, TokenSerializer, TransactionSerializer, FavoriteSerializer
+from .models import User, Token, Transaction, Favorite
+from .services.market_service import MarketService
+from .services.auth_service import AuthService
+from .services.wallet_service import WalletService
+from .services.token_service import TokenService
+
+# 用户认证相关视图集（登录、登出、获取当前用户信息）
+class AuthViewSet(viewsets.ViewSet):
+    """
+    处理用户认证相关的视图集
+    功能包括：Google登录、登出、获取用户信息
+    """
+
+    def get_permissions(self):
+        """
+        动态权限控制：
+        - 只有 get_user 需要用户已登录
+        - 其他（登录、登出）接口对所有用户开放
+        """
+        if self.action == 'get_user':
+            return [IsAuthenticated()]
+        return []
+
+    @action(detail=False, methods=['post'])
+    def google_login(self, request):
+        """
+        Google OAuth 登录
+        接收 access_token，验证通过后返回用户信息
+        """
+        access_token = request.data.get('access_token')
+        if not access_token:
+            return Response({'error': 'Access token is required'}, status=400)
+        
+        auth_service = AuthService()
+        user = auth_service.google_login(request, access_token)
+        if user:
+            serializer = UserSerializer(user)
+            return Response(serializer.data)
+        return Response({'error': 'Login failed'}, status=401)
+
+    @action(detail=False, methods=['post'])
+    def logout(self, request):
+        """
+        登出当前用户
+        """
+        auth_service = AuthService()
+        if auth_service.logout_user(request):
+            return Response({'status': 'success'})
+        return Response({'error': 'Logout failed'}, status=400)
+
+    @action(detail=False, methods=['get'])
+    def get_user(self, request):
+        """
+        获取当前已登录用户的信息
+        """
+        serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
-class TransactionViewSet(viewsets.ViewSet):
-    def list(self, request, wallet_address=None):
-        transactions = Transaction.objects.filter(wallet_address=wallet_address)
+# 钱包绑定相关视图
+class WalletViewSet(viewsets.ViewSet):
+    """
+    钱包视图集
+    功能：用户绑定 Solana 钱包地址
+    """
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['post'])
+    def connect(self, request):
+        """
+        用户绑定 Solana 钱包地址
+        """
+        solana_address = request.data.get('solana_address')
+        if not solana_address:
+            return Response({'error': 'Solana address is required'}, status=400)
+        
+        wallet_service = WalletService()
+        if wallet_service.connect_wallet(request.user, solana_address):
+            return Response({'status': 'success'})
+        return Response({'error': 'Invalid wallet address'}, status=400)
+
+# 代币管理视图集（列表、收藏、转账、交易历史、增发销毁）
+class TokenViewSet(viewsets.ModelViewSet):
+    """
+    代币管理视图集
+    功能包括：
+    - 查看代币市场列表
+    - 收藏/取消收藏代币
+    - 代币转账
+    - 查看交易历史（含图表）
+    - 超级用户增发/销毁代币
+    """
+    serializer_class = TokenSerializer
+
+    def get_queryset(self):
+        """
+        定义数据源（标准 ModelViewSet 必需方法）
+        用于支持自动生成 RESTful API（GET/POST/PUT/DELETE）
+        """
+        return Token.objects.all()
+    
+    def get_permissions(self):
+        """
+        控制权限：
+        - list（获取代币列表）允许匿名访问
+        - 其他操作需要登录
+        """
+        if self.action in ['list', 'market_list']:  # 允许匿名访问的action
+            return []  # 空权限 = 允许任何人访问
+        return [IsAuthenticated()]  # 其他需要登录
+
+    @action(detail=False, methods=['post'], url_path='market-list')
+    def market_list(self, request):
+        """
+        通过 POST 获取代币市场数据（允许匿名访问）
+        接收参数：
+        - vs_currency
+        - page
+        - per_page
+
+        自定义代币列表（主页市场数据）
+        不直接返回数据库数据，而是通过 MarketService 获取链上市场数据
+        """
+        vs_currency = request.data.get('vs_currency', 'usd')
+        page = int(request.data.get('page', 1))
+        per_page = int(request.data.get('per_page', 20))
+
+        market_service = MarketService()
+        result = market_service.get_top_tokens(vs_currency=vs_currency, page=page, per_page=per_page)
+        return Response(result)
+
+    @action(detail=True, methods=['post'])
+    def favorite(self, request, pk=None):
+        """
+        收藏指定代币
+        """
+        token = self.get_object()
+        favorite, created = Favorite.objects.get_or_create(
+            user=request.user,
+            token=token
+        )
+        return Response({'status': 'token favorited'})
+
+    @action(detail=True, methods=['post'])
+    def unfavorite(self, request, pk=None):
+        """
+        取消收藏指定代币
+        """
+        token = self.get_object()
+        Favorite.objects.filter(
+            user=request.user,
+            token=token
+        ).delete()
+        return Response({'status': 'token unfavorited'})
+
+    @action(detail=True, methods=['post'])
+    def transfer(self, request, pk=None):
+        """
+        代币转账（用户必须已绑定钱包地址）
+        请求参数：
+        - to_address：接收地址
+        - amount：转账数量
+        """
+        token = self.get_object()
+        serializer = TransactionSerializer(data={
+            'token': token.id,
+            'from_address': request.user.solana_address,
+            'to_address': request.data.get('to_address'),
+            'amount': request.data.get('amount')
+        })
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        """
+        获取指定代币的交易历史
+        前端会结合 Chart.js 生成图表
+        """
+        token = self.get_object()
+        transactions = Transaction.objects.filter(token=token)
         serializer = TransactionSerializer(transactions, many=True)
         return Response(serializer.data)
 
-class AssetsView(generics.ListAPIView):
-    def get(self, request, wallet_address):
-        try:
-            account = Account.objects.get(wallet_address=wallet_address)
-            
-            # Get both token and NFT holdings
-            tokens = TokenHolding.objects.filter(wallet_address=account)
-            nfts = NFTHolding.objects.filter(wallet_address=account)
-            
-            assets_data = {
-                'tokens': [{
-                    'token_address': token.token_address,
-                    'token_symbol': token.token_symbol,
-                    'amount': token.amount,
-                    'value_usd': token.value_usd,
-                    'last_updated': token.updated_at
-                } for token in tokens],
-                'nfts': [{
-                    'mint_address': nft.mint_address,
-                    'name': nft.nft_name,
-                    'image_url': nft.image_url,
-                    'last_updated': nft.updated_at
-                } for nft in nfts]
-            }
-            
-            return Response({
-                'wallet_address': wallet_address,
-                'tokens_count': len(assets_data['tokens']),
-                'nfts_count': len(assets_data['nfts']),
-                'assets': assets_data
-            })
-            
-        except Account.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=404)
+    @action(detail=True, methods=['post'])
+    def manage(self, request, pk=None):
+        """
+        超级用户操作代币供应（增发/销毁）
+        权限：
+        - 用户必须为 is_staff 且为代币创建者
+        请求参数：
+        - action：增发 mint / 销毁 burn
+        - amount：操作数量
+        """
+        if not request.user.is_staff:
+            return Response({'error': 'Permission denied'}, status=403)
 
-class PerformanceView(generics.RetrieveAPIView):
-    def get(self, request, wallet_address):
+        token = self.get_object()
+        action_type = request.data.get('action')
+        amount = request.data.get('amount')
+
         try:
-            account = Account.objects.get(wallet_address=wallet_address)
-            
-            # Get time range from query params (default to last 30 days)
-            days = int(request.query_params.get('days', 30))
-            start_date = timezone.now() - timedelta(days=days)
-            
-            # Get transactions within time range
-            transactions = Transaction.objects.filter(
-                wallet_address=account,
-                block_time__gte=start_date
+            token_service = TokenService()
+            updated_token = token_service.manage_token_supply(
+                token=token,
+                user=request.user,
+                action_type=action_type,
+                amount=amount
             )
-            
-            # Calculate performance metrics
-            total_transactions = transactions.count()
-            total_volume = transactions.aggregate(Sum('amount'))['amount__sum'] or 0
-            
-            # Get current portfolio value
-            tokens = TokenHolding.objects.filter(wallet_address=account)
-            current_portfolio_value = sum(token.value_usd for token in tokens)
-            
-            return Response({
-                'wallet_address': wallet_address,
-                'period_days': days,
-                'total_transactions': total_transactions,
-                'total_volume': total_volume,
-                'current_portfolio_value': current_portfolio_value,
-                'last_updated': account.last_checked
-            })
-            
-        except Account.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=404)
-        except ValueError:
-            return Response({'error': 'Invalid parameters'}, status=400)
-
-class AccountOverviewView(generics.RetrieveAPIView):
-    def get(self, request, wallet_address):
-        try:
-            account = Account.objects.get(wallet_address=wallet_address)
-            
-            # Get token holdings
-            tokens = TokenHolding.objects.filter(wallet_address=account)
-            
-            # Get recent transactions
-            recent_transactions = Transaction.objects.filter(
-                wallet_address=account,
-                block_time__gte=timezone.now() - timedelta(days=7)
-            )[:10]
-            
-            return Response({
-                'wallet_address': account.wallet_address,
-                'sol_balance': account.sol_balance,
-                'tokens_count': tokens.count(),
-                'recent_transactions_count': recent_transactions.count(),
-                'last_checked': account.last_checked
-            })
-            
-        except Account.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=404)
-
-class TransactionHistoryView(generics.ListAPIView):
-    def get(self, request, wallet_address):
-        try:
-            account = Account.objects.get(wallet_address=wallet_address)
-            
-            # Get query parameters
-            page = int(request.query_params.get('page', 1))
-            page_size = int(request.query_params.get('page_size', 20))
-            transaction_type = request.query_params.get('type')
-            
-            # Base query
-            transactions = Transaction.objects.filter(wallet_address=account)
-            
-            # Apply type filter if specified
-            if transaction_type:
-                transactions = transactions.filter(tx_type=transaction_type)
-            
-            # Calculate pagination
-            start = (page - 1) * page_size
-            end = start + page_size
-            
-            # Get paginated transactions
-            paginated_transactions = transactions[start:end]
-            
-            # Prepare response data
-            transaction_data = [{
-                'signature': tx.signature,
-                'type': tx.tx_type,
-                'amount': tx.amount,
-                'timestamp': tx.block_time,
-            } for tx in paginated_transactions]
-            
-            return Response({
-                'total_count': transactions.count(),
-                'page': page,
-                'page_size': page_size,
-                'transactions': transaction_data
-            })
-            
-        except Account.DoesNotExist:
-            return Response({'error': 'Account not found'}, status=404)
-        except ValueError:
-            return Response({'error': 'Invalid pagination parameters'}, status=400)
+            serializer = self.get_serializer(updated_token)
+            return Response(serializer.data)
+        except (ValueError, PermissionDenied) as e:
+            return Response({'error': str(e)}, status=400)
+        except Exception as e:
+            return Response({'error': 'Internal server error'}, status=500)

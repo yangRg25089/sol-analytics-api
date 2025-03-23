@@ -1,50 +1,29 @@
--- Account 表数据
-INSERT INTO api_account (wallet_address, created_at, last_checked, sol_balance) VALUES
-('EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4', CURRENT_TIMESTAMP - INTERVAL '30 days', CURRENT_TIMESTAMP, 15.5),
-('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', CURRENT_TIMESTAMP - INTERVAL '25 days', CURRENT_TIMESTAMP, 8.2),
-('3KjdURz5fZCPeutRQxAVPtgzAPXC7zKdnW6FWcDP5yQv', CURRENT_TIMESTAMP - INTERVAL '20 days', CURRENT_TIMESTAMP, 25.7),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', CURRENT_TIMESTAMP - INTERVAL '30 days', CURRENT_TIMESTAMP, 125.45),
-('2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq', CURRENT_TIMESTAMP - INTERVAL '25 days', CURRENT_TIMESTAMP, 38.72),
-('5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', CURRENT_TIMESTAMP - INTERVAL '20 days', CURRENT_TIMESTAMP, 892.31);
+-- Users
+INSERT INTO api_user (id, password, username, email, google_id, solana_address, is_active, created_at, updated_at, is_superuser, is_staff, first_name, last_name, date_joined, last_login) VALUES
+(1, 'pbkdf2_sha256$260000$test_password', 'admin', 'admin@example.com', 'google_123456', 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 1, '2024-03-22 00:00:00', '2024-03-22 00:00:00', 1, 1, '', '', '2024-03-22 00:00:00', NULL),
+(2, 'pbkdf2_sha256$260000$test_password', 'user1', 'user1@example.com', 'google_234567', '5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 1, '2024-03-22 00:00:00', '2024-03-22 00:00:00', 0, 0, '', '', '2024-03-22 00:00:00', NULL),
+(3, 'pbkdf2_sha256$260000$test_password', 'user2', 'user2@example.com', 'google_345678', '7XxuQBJvD5KbYXJUemJ5UQRUkHgYZaL1U5kh1qY3Yp2F', 1, '2024-03-22 00:00:00', '2024-03-22 00:00:00', 0, 0, '', '', '2024-03-22 00:00:00', NULL);
 
--- TokenPrice 表数据
-INSERT INTO api_tokenprice (token_address, price_usd, timestamp) VALUES
-('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 1.00, CURRENT_TIMESTAMP), -- USDC
-('Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', 0.99, CURRENT_TIMESTAMP), -- USDT
-('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', 35.50, CURRENT_TIMESTAMP), -- mSOL
-('So11111111111111111111111111111111111111112', 101.25, CURRENT_TIMESTAMP), -- SOL
-('7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj', 55.82, CURRENT_TIMESTAMP); -- Bonk
+-- Tokens
+INSERT INTO api_token (id, name, symbol, total_supply, owner_id, created_at, updated_at) VALUES
+(1, 'Test Token 1', 'TT1', 1000000.000000000, 1, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(2, 'Test Token 2', 'TT2', 2000000.000000000, 1, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(3, 'Test Token 3', 'TT3', 3000000.000000000, 2, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(4, 'Test Token 4', 'TT4', 4000000.000000000, 2, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(5, 'Test Token 5', 'TT5', 5000000.000000000, 3, '2024-03-22 00:00:00', '2024-03-22 00:00:00');
 
--- TokenHolding 表数据
-INSERT INTO api_tokenholding (wallet_address_id, token_address, token_symbol, amount, value_usd, updated_at) VALUES
-('EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'USDC', 1000.00, 1000.00, CURRENT_TIMESTAMP),
-('EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', 'USDT', 500.00, 495.00, CURRENT_TIMESTAMP),
-('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', 'mSOL', 10.00, 355.00, CURRENT_TIMESTAMP),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'USDC', 25000.00, 25000.00, CURRENT_TIMESTAMP),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', 'mSOL', 150.00, 5325.00, CURRENT_TIMESTAMP),
-('2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq', '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj', 'BONK', 1000000.00, 55820.00, CURRENT_TIMESTAMP);
+-- Transactions
+INSERT INTO api_transaction (id, token_id, from_address, to_address, amount, timestamp, created_at, updated_at) VALUES
+(1, 1, 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', '5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 100.000000000, '2024-03-22 00:00:00', '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(2, 1, '5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', '7XxuQBJvD5KbYXJUemJ5UQRUkHgYZaL1U5kh1qY3Yp2F', 50.000000000, '2024-03-22 00:01:00', '2024-03-22 00:01:00', '2024-03-22 00:01:00'),
+(3, 2, 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', '5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 200.000000000, '2024-03-22 00:02:00', '2024-03-22 00:02:00', '2024-03-22 00:02:00'),
+(4, 3, '5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 300.000000000, '2024-03-22 00:03:00', '2024-03-22 00:03:00', '2024-03-22 00:03:00'),
+(5, 4, '7XxuQBJvD5KbYXJUemJ5UQRUkHgYZaL1U5kh1qY3Yp2F', '5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 400.000000000, '2024-03-22 00:04:00', '2024-03-22 00:04:00', '2024-03-22 00:04:00');
 
--- NFTHolding 表数据
-INSERT INTO api_nftholding (wallet_address_id, mint_address, nft_name, image_url, metadata_uri, updated_at) VALUES
-('EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4', 'NFTAD1', 'DeGods #1234', 'https://arweave.net/degods1234.png', 'https://arweave.net/metadata1234.json', CURRENT_TIMESTAMP),
-('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 'NFTAD2', 'SMB #5678', 'https://arweave.net/smb5678.png', 'https://arweave.net/metadata5678.json', CURRENT_TIMESTAMP),
-('3KjdURz5fZCPeutRQxAVPtgzAPXC7zKdnW6FWcDP5yQv', 'NFTAD3', 'ABC #9012', 'https://arweave.net/abc9012.png', 'https://arweave.net/metadata9012.json', CURRENT_TIMESTAMP),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'DG7JZKFcAvqdXw7RpyLVvWaM8tDUhbPV6LFpJ6abJQeX', 'DeGods #1234', 'https://metadata.degods.com/g/1234.png', 'https://metadata.degods.com/g/1234.json', CURRENT_TIMESTAMP),
-('2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq', 'SMB5iddf6GVMhsUW8CsA5cW6mFxRpFFSySpjHUnKKhP', 'SMB #5678', 'https://metadata.smb.com/5678.png', 'https://metadata.smb.com/5678.json', CURRENT_TIMESTAMP);
-
--- Transaction 表数据
-INSERT INTO api_transaction (wallet_address_id, signature, block_time, tx_type, token_address, amount, fee, status) VALUES
-('EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4', 'sig1', CURRENT_TIMESTAMP - INTERVAL '5 days', 'TRANSFER', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 100.00, 0.00001, 'SUCCESS'),
-('EzN8GNyVQZcVfYawBqCsJ9Nhx2oNwJGwQEtFYJ9cjes4', 'sig2', CURRENT_TIMESTAMP - INTERVAL '4 days', 'SWAP', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', 50.00, 0.00001, 'SUCCESS'),
-('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 'sig3', CURRENT_TIMESTAMP - INTERVAL '3 days', 'TRANSFER', 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', 5.00, 0.00001, 'SUCCESS'),
-('3KjdURz5fZCPeutRQxAVPtgzAPXC7zKdnW6FWcDP5yQv', 'sig4', CURRENT_TIMESTAMP - INTERVAL '2 days', 'OTHER', NULL, 2.50, 0.00001, 'SUCCESS'),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'sig_transfer_1', CURRENT_TIMESTAMP - INTERVAL '10 days', 'TRANSFER', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 5000.00, 0.00001, 'SUCCESS'),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'sig_swap_1', CURRENT_TIMESTAMP - INTERVAL '9 days', 'SWAP', 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', 50.00, 0.00001, 'SUCCESS'),
-('2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq', 'sig_transfer_2', CURRENT_TIMESTAMP - INTERVAL '8 days', 'TRANSFER', '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj', 500000.00, 0.00001, 'SUCCESS'),
-('5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 'sig_other_1', CURRENT_TIMESTAMP - INTERVAL '7 days', 'OTHER', NULL, 10.50, 0.00001, 'SUCCESS'),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'sig_swap_2', CURRENT_TIMESTAMP - INTERVAL '6 days', 'SWAP', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 1000.00, 0.00001, 'SUCCESS'),
-('2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq', 'sig_transfer_3', CURRENT_TIMESTAMP - INTERVAL '5 days', 'TRANSFER', 'So11111111111111111111111111111111111111112', 15.00, 0.00001, 'SUCCESS'),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'sig_swap_3', CURRENT_TIMESTAMP - INTERVAL '4 days', 'SWAP', 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', 25.00, 0.00001, 'SUCCESS'),
-('5tzFkiKscXHK5ZXCGbXZxgP3r5WyLHyfXc8CTqpmjH1E', 'sig_other_2', CURRENT_TIMESTAMP - INTERVAL '3 days', 'OTHER', NULL, 5.25, 0.00001, 'SUCCESS'),
-('2xNweLHPqvL3iUXP6fuQCLifpBs3guJBDk6aP9CQE8cq', 'sig_transfer_4', CURRENT_TIMESTAMP - INTERVAL '2 days', 'TRANSFER', '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj', 250000.00, 0.00001, 'SUCCESS'),
-('HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH', 'sig_swap_4', CURRENT_TIMESTAMP - INTERVAL '1 day', 'SWAP', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 2000.00, 0.00001, 'SUCCESS');
+-- Favorites
+INSERT INTO api_favorite (id, user_id, token_id, created_at, updated_at) VALUES
+(1, 1, 2, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(2, 1, 3, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(3, 2, 1, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(4, 2, 4, '2024-03-22 00:00:00', '2024-03-22 00:00:00'),
+(5, 3, 5, '2024-03-22 00:00:00', '2024-03-22 00:00:00');
