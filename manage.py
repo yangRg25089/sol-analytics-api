@@ -15,11 +15,6 @@ def main():
             "forget to activate a virtual environment?"
         ) from exc
     
-    # 使用环境变量中的端口，默认为 8081
-    if 'runserver' in sys.argv and len(sys.argv) == 2:
-        port = os.getenv('PORT', '8081')
-        sys.argv.append(f'0.0.0.0:{port}')
-        
     execute_from_command_line(sys.argv)
 
 if __name__ == '__main__':

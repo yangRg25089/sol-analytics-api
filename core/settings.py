@@ -19,16 +19,21 @@ DATABASES = {
 
 # Application definition
 INSTALLED_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',  # 必须放在最前面
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    # 第三方
     'rest_framework',
+    'rest_framework.authtoken',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
     'drf_yasg',
     'corsheaders',
     'api',
-    'django.contrib.sites',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -67,7 +72,9 @@ CORS_ALLOW_CREDENTIALS = True
 # Rest Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'DEFAULT_PARSER_CLASSES': ['rest_framework.parsers.JSONParser'],
     'DEFAULT_RENDERER_CLASSES': [
@@ -114,16 +121,35 @@ AUTHENTICATION_BACKENDS = [
 
 SITE_ID = 1
 
+REST_USE_JWT = True
+
 # Django AllAuth settings
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'username'
+ACCOUNT_EMAIL_REQUIRED = False
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = 'http://127.0.0.1:3000/oauth-success'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_SESSION_REMEMBER = True
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+
+# Additional AllAuth settings
+# 允许自动注册新用户
+SOCIALACCOUNT_AUTO_SIGNUP = True
+# 不要求邮箱验证
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+# 从社交账号获取邮箱
+SOCIALACCOUNT_QUERY_EMAIL = True
+# 允许通过 GET 请求登录
+SOCIALACCOUNT_LOGIN_ON_GET = True
+# 禁用邮箱验证
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+# 存储社交账号的令牌
+SOCIALACCOUNT_STORE_TOKENS = True
+# 使用自定义的适配器
+SOCIALACCOUNT_ADAPTER = 'api.adapters.CustomSocialAccountAdapter'
+ACCOUNT_ADAPTER = 'api.adapters.CustomAccountAdapter'
 
 # Google OAuth2 settings
 SOCIALACCOUNT_PROVIDERS = {
@@ -134,6 +160,7 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',
-        }
+            'prompt': 'consent',
+        },
     }
 }

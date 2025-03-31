@@ -19,20 +19,30 @@ class AuthService:
         """
         try:
             # 从Google获取用户信息
-            social_account = SocialAccount.objects.get_or_create(
+            social_account, created = SocialAccount.objects.get_or_create(
                 provider='google',
                 uid=access_token['sub'],
                 defaults={
                     'extra_data': access_token
                 }
-            )[0]
-
-            # 获取或创建用户
-            user = social_account.user or User.objects.create(
-                username=access_token['email'],
-                email=access_token['email'],
-                google_id=access_token['sub']
             )
+
+            # 如果SocialAccount已存在，获取关联的用户
+            if not created:
+                user = social_account.user
+            else:
+                # 检查是否已存在具有相同google_id的用户
+                try:
+                    user = User.objects.get(google_id=access_token['sub'])
+                except User.DoesNotExist:
+                    # 创建新用户
+                    user = User.objects.create(
+                        username=access_token['email'],
+                        email=access_token['email'],
+                        google_id=access_token['sub']
+                    )
+                    social_account.user = user
+                    social_account.save()
 
             # 登录用户
             login(request, user)
