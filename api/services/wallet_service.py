@@ -1,5 +1,6 @@
 from solana.rpc.api import Client
 from django.conf import settings
+from core.models import User
 
 """钱包服务：处理Solana钱包相关的操作"""
 

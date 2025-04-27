@@ -72,3 +72,5 @@ node_modules/
 *.avi
 *.wmv
 项目概述.md
+
+/.VSCodeCounter

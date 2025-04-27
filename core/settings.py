@@ -33,11 +33,13 @@ INSTALLED_APPS = [
     'dj_rest_auth.registration',
     'drf_yasg',
     'corsheaders',
-    'api',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    # 自定义应用
+    'core',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -112,7 +114,7 @@ TEMPLATES = [
     },
 ]
 
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'core.User'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',

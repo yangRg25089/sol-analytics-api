@@ -1,31 +1,34 @@
 from rest_framework import serializers
-from .models import User, Token, Transaction, Favorite
+from core.models import User, Token, Transaction, Favorite, Permission
 
 class UserSerializer(serializers.ModelSerializer):
-    owned_tokens = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-    favorites = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'google_id', 'solana_address', 
-                 'created_at', 'updated_at', 'owned_tokens', 'favorites']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ('id', 'google_id', 'solana_address', 'name', 'avatar_url', 'role', 'is_active', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'id')
 
 class TokenSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
+    owner_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        write_only=True,
+        source='owner'
+    )
     is_favorite = serializers.SerializerMethodField()
     favorited_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Token
-        fields = ['id', 'name', 'symbol', 'total_supply', 'owner', 
-                 'created_at', 'updated_at', 'is_favorite', 'favorited_count']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ('id', 'name', 'symbol', 'total_supply', 'owner', 'owner_id', 'is_active', 'created_at', 'updated_at', 'is_favorite', 'favorited_count')
+        read_only_fields = ('created_at', 'updated_at', 'id', 'owner')
 
     def get_is_favorite(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Favorite.objects.filter(user=request.user, token=obj).exists()
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            try:
+                return Favorite.objects.filter(user_id=request.user.id, token=obj).exists()
+            except AttributeError:
+                return False
         return False
 
     def get_favorited_count(self, obj):
@@ -34,29 +37,53 @@ class TokenSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     token = TokenSerializer(read_only=True)
     token_id = serializers.PrimaryKeyRelatedField(
-        queryset=Token.objects.all(), 
+        queryset=Token.objects.all(),
         write_only=True,
         source='token'
     )
 
     class Meta:
         model = Transaction
-        fields = ['id', 'token', 'token_id', 'from_address', 'to_address',
-                 'amount', 'timestamp', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ('id', 'token', 'token_id', 'from_address', 'to_address', 'amount', 'timestamp', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'id', 'token')
 
 class FavoriteSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     token = TokenSerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        write_only=True,
+        source='user'
+    )
+    token_id = serializers.PrimaryKeyRelatedField(
+        queryset=Token.objects.all(),
+        write_only=True,
+        source='token'
+    )
 
     class Meta:
         model = Favorite
-        fields = ['id', 'user', 'token', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ('id', 'user', 'user_id', 'token', 'token_id', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'id', 'user', 'token')
 
     def validate(self, attrs):
-        user = self.context['request'].user
-        token = attrs['token']
-        if Favorite.objects.filter(user=user, token=token).exists():
-            raise serializers.ValidationError("This token is already favorited.")
         return attrs
+
+class PermissionSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    token = TokenSerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        write_only=True,
+        source='user'
+    )
+    token_id = serializers.PrimaryKeyRelatedField(
+        queryset=Token.objects.all(),
+        write_only=True,
+        source='token'
+    )
+
+    class Meta:
+        model = Permission
+        fields = ('id', 'user', 'user_id', 'token', 'token_id', 'can_manage', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'id', 'user', 'token')

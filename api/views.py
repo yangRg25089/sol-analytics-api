@@ -7,208 +7,180 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from .serializers import UserSerializer, TokenSerializer, TransactionSerializer, FavoriteSerializer
-from .models import User, Token, Transaction, Favorite
+from django.core.exceptions import PermissionDenied
+from django.contrib.auth import logout # 导入 logout
+
+# 更新导入 (回到 .serializers, core.models)
+from .serializers import UserSerializer, TokenSerializer, TransactionSerializer, FavoriteSerializer, PermissionSerializer
+from core.models import User, Token, Transaction, Favorite, Permission # Correct import path
 from .services.market_service import MarketService
-from .services.auth_service import AuthService
 from .services.wallet_service import WalletService
 from .services.token_service import TokenService
+from django.http import HttpResponseRedirect
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from rest_framework.views import APIView
+from decimal import Decimal, InvalidOperation
+from django.utils import timezone
 
-# 用户认证相关视图集（登录、登出、获取当前用户信息）
+# 自定义权限类 (示例)
+class IsTokenManager(IsAuthenticated):
+    def has_object_permission(self, request, view, obj):
+        if isinstance(obj, Token):
+            if not hasattr(request.user, 'id'):
+                 return False 
+            has_perm = Permission.objects.filter(user_id=request.user.id, token=obj, can_manage=True).exists()
+            is_owner_issuer = (request.user.role in ['token_issuer', 'admin']) and (obj.owner_id == request.user.id)
+            return has_perm or is_owner_issuer
+        return False
+
+# 用户认证相关视图集
 class AuthViewSet(viewsets.ViewSet):
-    """
-    处理用户认证相关的视图集
-    功能包括：Google登录、登出、获取用户信息
-    """
+    serializer_class = UserSerializer
 
     def get_permissions(self):
-        """
-        动态权限控制：
-        - 只有 get_user 需要用户已登录
-        - 其他（登录、登出）接口对所有用户开放
-        """
         if self.action == 'get_user':
+            return [IsAuthenticated()]
+        if self.action == 'logout':
             return [IsAuthenticated()]
         return []
 
     @action(detail=False, methods=['post'])
-    def google_login(self, request):
-        """
-        Google OAuth 登录
-        接收 access_token，验证通过后返回用户信息
-        """
-        access_token = request.data.get('access_token')
-        if not access_token:
-            return Response({'error': 'Access token is required'}, status=400)
-        
-        auth_service = AuthService()
-        user = auth_service.google_login(request, access_token)
-        if user:
-            serializer = UserSerializer(user)
-            return Response(serializer.data)
-        return Response({'error': 'Login failed'}, status=401)
-
-    @action(detail=False, methods=['post'])
     def logout(self, request):
-        """
-        登出当前用户
-        """
-        auth_service = AuthService()
-        if auth_service.logout_user(request):
-            return Response({'status': 'success'})
-        return Response({'error': 'Logout failed'}, status=400)
+        logout(request)
+        return Response({'status': 'Successfully logged out.'})
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='me')
     def get_user(self, request):
-        """
-        获取当前已登录用户的信息
-        """
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
 # 钱包绑定相关视图
 class WalletViewSet(viewsets.ViewSet):
-    """
-    钱包视图集
-    功能：用户绑定 Solana 钱包地址
-    """
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['post'])
     def connect(self, request):
-        """
-        用户绑定 Solana 钱包地址
-        """
         solana_address = request.data.get('solana_address')
         if not solana_address:
             return Response({'error': 'Solana address is required'}, status=400)
         
         wallet_service = WalletService()
         if wallet_service.connect_wallet(request.user, solana_address):
-            return Response({'status': 'success'})
-        return Response({'error': 'Invalid wallet address'}, status=400)
+            serializer = UserSerializer(request.user)
+            return Response(serializer.data)
+        return Response({'error': 'Invalid wallet address or failed to save'}, status=400)
 
-# 代币管理视图集（列表、收藏、转账、交易历史、增发销毁）
+# 代币管理视图集
 class TokenViewSet(viewsets.ModelViewSet):
-    """
-    代币管理视图集
-    功能包括：
-    - 查看代币市场列表
-    - 收藏/取消收藏代币
-    - 代币转账
-    - 查看交易历史（含图表）
-    - 超级用户增发/销毁代币
-    """
     serializer_class = TokenSerializer
+    queryset = Token.objects.filter(is_active=True)
 
-    def get_queryset(self):
-        """
-        定义数据源（标准 ModelViewSet 必需方法）
-        用于支持自动生成 RESTful API（GET/POST/PUT/DELETE）
-        """
-        return Token.objects.all()
-    
     def get_permissions(self):
-        """
-        控制权限：
-        - list（获取代币列表）允许匿名访问
-        - 其他操作需要登录
-        """
-        if self.action in ['list', 'market_list']:  # 允许匿名访问的action
-            return []  # 空权限 = 允许任何人访问
-        return [IsAuthenticated()]  # 其他需要登录
+        if self.action in ['list', 'retrieve', 'market_list', 'history']:
+            return []
+        if self.action in ['favorite', 'unfavorite']:
+            return [IsAuthenticated()]
+        if self.action in ['manage', 'update', 'partial_update', 'destroy']:
+            # return [IsTokenManager()]
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
     @action(detail=False, methods=['post'], url_path='market-list')
     def market_list(self, request):
-        """
-        通过 POST 获取代币市场数据（允许匿名访问）
-        接收参数：
-        - vs_currency
-        - page
-        - per_page
-
-        自定义代币列表（主页市场数据）
-        不直接返回数据库数据，而是通过 MarketService 获取链上市场数据
-        """
         vs_currency = request.data.get('vs_currency', 'usd')
         page = int(request.data.get('page', 1))
         per_page = int(request.data.get('per_page', 20))
-
         market_service = MarketService()
         result = market_service.get_top_tokens(vs_currency=vs_currency, page=page, per_page=per_page)
         return Response(result)
 
     @action(detail=True, methods=['post'])
     def favorite(self, request, pk=None):
-        """
-        收藏指定代币
-        """
         token = self.get_object()
+        if not hasattr(request.user, 'id'):
+            return Response({"error": "User not authenticated properly"}, status=401)
         favorite, created = Favorite.objects.get_or_create(
-            user=request.user,
+            user_id=request.user.id,
             token=token
         )
-        return Response({'status': 'token favorited'})
+        if created:
+            return Response({'status': 'token favorited'})
+        else:
+            return Response({'status': 'token already favorited'})
 
     @action(detail=True, methods=['post'])
     def unfavorite(self, request, pk=None):
-        """
-        取消收藏指定代币
-        """
         token = self.get_object()
-        Favorite.objects.filter(
-            user=request.user,
+        if not hasattr(request.user, 'id'):
+            return Response({"error": "User not authenticated properly"}, status=401)
+        deleted_count, _ = Favorite.objects.filter(
+            user_id=request.user.id,
             token=token
         ).delete()
-        return Response({'status': 'token unfavorited'})
+        if deleted_count > 0:
+            return Response({'status': 'token unfavorited'})
+        else:
+            return Response({'status': 'token was not favorited'})
 
     @action(detail=True, methods=['post'])
     def transfer(self, request, pk=None):
-        """
-        代币转账（用户必须已绑定钱包地址）
-        请求参数：
-        - to_address：接收地址
-        - amount：转账数量
-        """
         token = self.get_object()
+        to_address = request.data.get('to_address')
+        amount = request.data.get('amount')
+
+        if not request.user.solana_address:
+             return Response({'error': 'User has no Solana address connected'}, status=400)
+        if not to_address or not amount:
+            return Response({'error': 'Missing to_address or amount'}, status=400)
+
         serializer = TransactionSerializer(data={
-            'token': token.id,
+            'token_id': token.id,
             'from_address': request.user.solana_address,
-            'to_address': request.data.get('to_address'),
-            'amount': request.data.get('amount')
-        })
+            'from_user_id': request.user.id,
+            'to_address': to_address,
+            'amount': amount,
+            'timestamp': timezone.now()
+        }, context=self.get_serializer_context())
+
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None):
-        """
-        获取指定代币的交易历史
-        前端会结合 Chart.js 生成图表
-        """
         token = self.get_object()
-        transactions = Transaction.objects.filter(token=token)
-        serializer = TransactionSerializer(transactions, many=True)
+        transactions = Transaction.objects.filter(token=token).order_by('-timestamp')
+        serializer = TransactionSerializer(transactions, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def manage(self, request, pk=None):
-        """
-        超级用户操作代币供应（增发/销毁）
-        权限：
-        - 用户必须为 is_staff 且为代币创建者
-        请求参数：
-        - action：增发 mint / 销毁 burn
-        - amount：操作数量
-        """
-        if not request.user.is_staff:
-            return Response({'error': 'Permission denied'}, status=403)
-
         token = self.get_object()
+        if not hasattr(request.user, 'id'):
+            return Response({"error": "User not authenticated properly"}, status=401)
+            
+        # if not IsTokenManager().has_object_permission(request, self, token):
+        #     return Response({'error': 'Permission denied'}, status=403)
+        if token.owner_id != request.user.id and request.user.role not in ['admin', 'token_issuer']:
+             return Response({'error': 'Permission denied. Not owner or manager.'}, status=403)
+
         action_type = request.data.get('action')
         amount = request.data.get('amount')
+
+        if not action_type or not amount:
+            return Response({'error': 'Missing action or amount'}, status=400)
+
+        try:
+            amount_decimal = Decimal(amount)
+        except InvalidOperation:
+             return Response({'error': 'Invalid amount'}, status=400)
 
         try:
             token_service = TokenService()
@@ -216,11 +188,14 @@ class TokenViewSet(viewsets.ModelViewSet):
                 token=token,
                 user=request.user,
                 action_type=action_type,
-                amount=amount
+                amount=amount_decimal
             )
             serializer = self.get_serializer(updated_token)
             return Response(serializer.data)
         except (ValueError, PermissionDenied) as e:
             return Response({'error': str(e)}, status=400)
         except Exception as e:
-            return Response({'error': 'Internal server error'}, status=500)
+            print(f"Error during token management: {e}")
+            return Response({'error': 'Internal server error during token management'}, status=500)
+
+# ... (rest of the file, e.g., commented out FavoriteViewSet) 

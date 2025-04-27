@@ -1,0 +1,233 @@
+[
+  {
+    "model": "core.user",
+    "pk": 1,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": true,
+      "google_id": "google_admin_001",
+      "email": "admin@example.com",
+      "solana_address": "AdminSoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "name": "Admin User",
+      "avatar_url": "https://example.com/avatar/admin.png",
+      "role": "admin",
+      "is_active": true,
+      "is_staff": true,
+      "created_at": "2023-10-27T10:00:00Z",
+      "updated_at": "2023-10-27T10:00:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.user",
+    "pk": 2,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "google_id": "google_issuer_002",
+      "email": "issuer@example.com",
+      "solana_address": "IssuerSoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "name": "Token Issuer One",
+      "avatar_url": null,
+      "role": "token_issuer",
+      "is_active": true,
+      "is_staff": false,
+      "created_at": "2023-10-27T10:05:00Z",
+      "updated_at": "2023-10-27T10:05:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.user",
+    "pk": 3,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "google_id": "google_user_003",
+      "email": "user1@example.com",
+      "solana_address": "User1SoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "name": "Regular User One",
+      "avatar_url": "https://example.com/avatar/user1.png",
+      "role": "user",
+      "is_active": true,
+      "is_staff": false,
+      "created_at": "2023-10-27T10:10:00Z",
+      "updated_at": "2023-10-27T10:10:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.user",
+    "pk": 4,
+    "fields": {
+      "password": "!",
+      "last_login": null,
+      "is_superuser": false,
+      "google_id": "google_user_004",
+      "email": "user2@example.com",
+      "solana_address": null,
+      "name": "Regular User Two",
+      "avatar_url": null,
+      "role": "user",
+      "is_active": true,
+      "is_staff": false,
+      "created_at": "2023-10-27T10:15:00Z",
+      "updated_at": "2023-10-27T10:15:00Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "core.token",
+    "pk": 1,
+    "fields": {
+      "name": "Solana Project Token",
+      "symbol": "SOLPT",
+      "total_supply": 1000000000,
+      "owner": 2,
+      "is_active": true,
+      "created_at": "2023-10-27T11:00:00Z",
+      "updated_at": "2023-10-27T11:00:00Z"
+    }
+  },
+  {
+    "model": "core.token",
+    "pk": 2,
+    "fields": {
+      "name": "Awesome Gaming Coin",
+      "symbol": "AGC",
+      "total_supply": 5000000000,
+      "owner": 2,
+      "is_active": true,
+      "created_at": "2023-10-27T11:05:00Z",
+      "updated_at": "2023-10-27T11:05:00Z"
+    }
+  },
+  {
+    "model": "core.token",
+    "pk": 3,
+    "fields": {
+      "name": "Defunct Test Token",
+      "symbol": "DTT",
+      "total_supply": 1000,
+      "owner": 1,
+      "is_active": false,
+      "created_at": "2023-10-27T11:10:00Z",
+      "updated_at": "2023-10-27T11:10:00Z"
+    }
+  },
+  {
+    "model": "core.transaction",
+    "pk": 1,
+    "fields": {
+      "token": 1,
+      "from_address": "IssuerSoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "from_user": 2,
+      "to_address": "User1SoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "to_user": 3,
+      "amount": 5000,
+      "timestamp": "2023-10-27T12:00:00Z",
+      "created_at": "2023-10-27T12:00:05Z",
+      "updated_at": "2023-10-27T12:00:05Z"
+    }
+  },
+  {
+    "model": "core.transaction",
+    "pk": 2,
+    "fields": {
+      "token": 1,
+      "from_address": "User1SoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "from_user": 3,
+      "to_address": "SomeOtherAddressXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "to_user": null,
+      "amount": 100,
+      "timestamp": "2023-10-27T12:05:00Z",
+      "created_at": "2023-10-27T12:05:05Z",
+      "updated_at": "2023-10-27T12:05:05Z"
+    }
+  },
+  {
+    "model": "core.transaction",
+    "pk": 3,
+    "fields": {
+      "token": 2,
+      "from_address": "IssuerSoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "from_user": 2,
+      "to_address": "User1SoLAddressXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "to_user": 3,
+      "amount": 99999,
+      "timestamp": "2023-10-27T12:10:00Z",
+      "created_at": "2023-10-27T12:10:05Z",
+      "updated_at": "2023-10-27T12:10:05Z"
+    }
+  },
+  {
+    "model": "core.favorite",
+    "pk": 1,
+    "fields": {
+      "user": 3,
+      "token": 1,
+      "created_at": "2023-10-27T13:00:00Z",
+      "updated_at": "2023-10-27T13:00:00Z"
+    }
+  },
+  {
+    "model": "core.favorite",
+    "pk": 2,
+    "fields": {
+      "user": 3,
+      "token": 2,
+      "created_at": "2023-10-27T13:01:00Z",
+      "updated_at": "2023-10-27T13:01:00Z"
+    }
+  },
+  {
+    "model": "core.favorite",
+    "pk": 3,
+    "fields": {
+      "user": 1,
+      "token": 1,
+      "created_at": "2023-10-27T13:02:00Z",
+      "updated_at": "2023-10-27T13:02:00Z"
+    }
+  },
+  {
+    "model": "core.permission",
+    "pk": 1,
+    "fields": {
+      "user": 2,
+      "token": 1,
+      "can_manage": true,
+      "created_at": "2023-10-27T14:00:00Z",
+      "updated_at": "2023-10-27T14:00:00Z"
+    }
+  },
+  {
+    "model": "core.permission",
+    "pk": 2,
+    "fields": {
+      "user": 2,
+      "token": 2,
+      "can_manage": true,
+      "created_at": "2023-10-27T14:01:00Z",
+      "updated_at": "2023-10-27T14:01:00Z"
+    }
+  },
+  {
+    "model": "core.permission",
+    "pk": 3,
+    "fields": {
+      "user": 1,
+      "token": 1,
+      "can_manage": true,
+      "created_at": "2023-10-27T14:02:00Z",
+      "updated_at": "2023-10-27T14:02:00Z"
+    }
+  }
+]
