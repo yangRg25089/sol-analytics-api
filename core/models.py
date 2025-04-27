@@ -1,58 +1,82 @@
-from django.db import models
 from django.conf import settings
-from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
+from django.db import models
+
 
 class UserManager(BaseUserManager):
-    def create_user(self, google_id, password=None, **extra_fields):
-        if not google_id:
-            raise ValueError('The Google ID must be set')
-        user = self.model(google_id=google_id, **extra_fields)
-        user.set_unusable_password()
+    def create_user(self, username, password=None, **extra_fields):
+        if not username:
+            raise ValueError("The Username must be set")
+
+        google_id = extra_fields.pop("google_id", None)
+        user = self.model(username=username, google_id=google_id, **extra_fields)
+
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, google_id, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('role', 'admin')
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-        return self.create_user(google_id, password, **extra_fields)
+    def create_superuser(self, username, password, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("role", "admin")
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
+        if not password:
+            raise ValueError("Superuser must have a password.")
+
+        return self.create_user(username, password, **extra_fields)
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.AutoField(primary_key=True)
-    google_id = models.CharField(max_length=100, unique=True, db_index=True)
+    google_id = models.CharField(
+        max_length=100, unique=True, db_index=True, null=True, blank=True
+    )
     email = models.EmailField(unique=True, null=True, blank=True, db_index=True)
-    solana_address = models.CharField(max_length=44, null=True, blank=True, db_index=True)
+    username = models.CharField(max_length=150, unique=True, null=True, blank=True)
+    solana_address = models.CharField(
+        max_length=44, null=True, blank=True, db_index=True
+    )
     name = models.CharField(max_length=255, null=True, blank=True)
     avatar_url = models.URLField(max_length=500, null=True, blank=True)
-    role = models.CharField(max_length=50, default='user')
+    role = models.CharField(max_length=50, default="user")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
-    USERNAME_FIELD = 'google_id'
-    REQUIRED_FIELDS = []
+    USERNAME_FIELD = "username"
+    REQUIRED_FIELDS = ["email"]
 
     @property
     def is_anonymous(self):
         return False
 
     def __str__(self):
-        return self.google_id
+        return self.username or self.google_id or str(self.id)
+
 
 class Token(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=100)
     symbol = models.CharField(max_length=10, db_index=True)
     total_supply = models.BigIntegerField()
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='owned_tokens', db_index=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="owned_tokens",
+        db_index=True,
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -60,13 +84,28 @@ class Token(models.Model):
     def __str__(self):
         return f"{self.name} ({self.symbol})"
 
+
 class Transaction(models.Model):
     id = models.BigAutoField(primary_key=True)
-    token = models.ForeignKey(Token, on_delete=models.CASCADE, related_name='transactions', db_index=True)
+    token = models.ForeignKey(
+        Token, on_delete=models.CASCADE, related_name="transactions", db_index=True
+    )
     from_address = models.CharField(max_length=44, db_index=True)
-    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='transactions_sent')
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transactions_sent",
+    )
     to_address = models.CharField(max_length=44, db_index=True)
-    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='transactions_received')
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transactions_received",
+    )
     amount = models.BigIntegerField()
     timestamp = models.DateTimeField(db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -75,32 +114,48 @@ class Transaction(models.Model):
     def __str__(self):
         return f"Tx {self.id}: {self.amount} {self.token.symbol} from {self.from_address[:6]} to {self.to_address[:6]}"
 
+
 class Favorite(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='favorites', db_index=True)
-    token = models.ForeignKey(Token, on_delete=models.CASCADE, related_name='favorited_by', db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorites",
+        db_index=True,
+    )
+    token = models.ForeignKey(
+        Token, on_delete=models.CASCADE, related_name="favorited_by", db_index=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['user', 'token']
-        indexes = [models.Index(fields=['user', 'token'])]
+        unique_together = ["user", "token"]
+        indexes = [models.Index(fields=["user", "token"])]
 
     def __str__(self):
         return f"User {self.user_id} favorites Token {self.token_id}"
 
+
 class Permission(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='permissions', db_index=True)
-    token = models.ForeignKey(Token, on_delete=models.CASCADE, related_name='permissions', db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="permissions",
+        db_index=True,
+    )
+    token = models.ForeignKey(
+        Token, on_delete=models.CASCADE, related_name="permissions", db_index=True
+    )
     can_manage = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ['user', 'token']
-        indexes = [models.Index(fields=['user', 'token'])]
+        unique_together = ["user", "token"]
+        indexes = [models.Index(fields=["user", "token"])]
 
     def __str__(self):
         status = "can manage" if self.can_manage else "cannot manage"
-        return f"User {self.user_id} {status} Token {self.token_id}" 
+        return f"User {self.user_id} {status} Token {self.token_id}"

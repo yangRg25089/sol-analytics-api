@@ -18,13 +18,12 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         user = User()  # 创建我们自定义的 User 实例
         user.google_id = sociallogin.account.uid  # 使用社交账户的 uid 作为 google_id
 
-        if sociallogin.account.provider == "google":
+        if sociallogin.account.provider == "Google":
             extra_data = sociallogin.account.extra_data
+            user.email = extra_data.get("email")
+            user.username = extra_data.get("email")
             user.name = extra_data.get("name", "")
             user.avatar_url = extra_data.get("picture", "")
-            # 可以根据需要设置 email (如果 User 模型有 email 字段)
-            # user.email = extra_data.get('email')
-            # 注意：我们没有 username 字段了
 
         # sociallogin.user = user # 这行可能不需要，因为 allauth 会处理关联
         return user
