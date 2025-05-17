@@ -122,9 +122,14 @@ class TokenViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="market-list")
     def market_list(self, request):
-        vs_currency = request.data.get("vs_currency", "usd")
-        page = int(request.data.get("page", 1))
-        per_page = int(request.data.get("per_page", 20))
+        vs_currency = request.data.get("vs_currency", "usd").upper()
+        limit = int(request.data.get("limit", 10))
+        offset = int(request.data.get("offset", 0))
+
+        # 计算 per_page 和 page
+        per_page = limit
+        page = (offset // limit) + 1 if limit > 0 else 1
+
         market_service = MarketService()
         result = market_service.get_top_tokens(
             vs_currency=vs_currency, page=page, per_page=per_page
