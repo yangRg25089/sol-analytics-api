@@ -1,16 +1,20 @@
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, username, password=None, **extra_fields):
-        if not username:
-            raise ValueError("The Username must be set")
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
 
-        google_id = extra_fields.pop("google_id", None)
-        user = self.model(username=username, google_id=google_id, **extra_fields)
+        user_type = extra_fields.pop("user_type", "google")
+        if user_type == "google" and not extra_fields.get("google_id"):
+            raise ValueError("Google users must have a google_id")
+
+        user = self.model(email=email, user_type=user_type, **extra_fields)
 
         if password:
             user.set_password(password)
@@ -20,28 +24,29 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, username, password, **extra_fields):
+    def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("role", "admin")
+        extra_fields["user_type"] = "admin"
 
-        if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True.")
-        if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True.")
-
-        if not password:
-            raise ValueError("Superuser must have a password.")
-
-        return self.create_user(username, password, **extra_fields)
+        return self.create_user(email, password, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    USER_TYPE_CHOICES = [
+        ("admin", "Admin User"),
+        ("google", "Google User"),
+    ]
+
     id = models.AutoField(primary_key=True)
-    google_id = models.CharField(
-        max_length=100, unique=True, db_index=True, null=True, blank=True
+    user_type = models.CharField(
+        max_length=10, choices=USER_TYPE_CHOICES, default="google"
     )
-    email = models.EmailField(unique=True, null=True, blank=True, db_index=True)
+    google_id = models.CharField(
+        max_length=100, unique=True, null=True, blank=True, db_index=True
+    )
+    email = models.EmailField(unique=True, null=False, blank=False, db_index=True)
     username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     solana_address = models.CharField(
         max_length=44, null=True, blank=True, db_index=True
@@ -55,15 +60,31 @@ class User(AbstractBaseUser, PermissionsMixin):
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
-    USERNAME_FIELD = "username"
-    REQUIRED_FIELDS = ["email"]
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(user_type="google", google_id__isnull=False)
+                | models.Q(user_type="admin", google_id__isnull=True),
+                name="valid_user_type_constraint",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.user_type == "google" and not self.google_id:
+            raise ValidationError("Google users must have a google_id")
+        if self.user_type == "admin" and self.google_id:
+            raise ValidationError("Admin users should not have a google_id")
 
     @property
     def is_anonymous(self):
         return False
 
     def __str__(self):
-        return self.username or self.google_id or str(self.id)
+        return self.email or self.google_id or str(self.id)
 
 
 class Token(models.Model):
