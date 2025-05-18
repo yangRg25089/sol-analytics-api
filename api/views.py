@@ -16,6 +16,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from core.models import (  # Correct import path
     Favorite,
@@ -42,8 +43,6 @@ from .services.wallet_service import WalletService
 class IsTokenManager(IsAuthenticated):
     def has_object_permission(self, request, view, obj):
         if isinstance(obj, Token):
-            if not hasattr(request.user, "id"):
-                return False
             has_perm = Permission.objects.filter(
                 user_id=request.user.id, token=obj, can_manage=True
             ).exists()
@@ -56,6 +55,8 @@ class IsTokenManager(IsAuthenticated):
 
 # 用户认证相关视图集
 class AuthViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
     serializer_class = UserSerializer
 
     def get_permissions(self):
@@ -102,18 +103,18 @@ class WalletViewSet(viewsets.ViewSet):
 
 # 代币管理视图集
 class TokenViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
     serializer_class = TokenSerializer
     queryset = Token.objects.filter(is_active=True)
 
     def get_permissions(self):
-        if self.action in ["list", "retrieve", "market_list", "history"]:
+        if self.action == "market_list":
+            # 仅 market-list 开放
             return []
-        if self.action in ["favorite", "unfavorite"]:
-            return [IsAuthenticated()]
-        if self.action in ["manage", "update", "partial_update", "destroy"]:
-            # return [IsTokenManager()]
-            return [IsAuthenticated()]
-        return super().get_permissions()
+
+        # 其他所有接口默认要求认证
+        return [IsAuthenticated()]
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -139,8 +140,6 @@ class TokenViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def favorite(self, request, pk=None):
         token = self.get_object()
-        if not hasattr(request.user, "id"):
-            return Response({"error": "User not authenticated properly"}, status=401)
         favorite, created = Favorite.objects.get_or_create(
             user_id=request.user.id, token=token
         )
@@ -152,8 +151,6 @@ class TokenViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def unfavorite(self, request, pk=None):
         token = self.get_object()
-        if not hasattr(request.user, "id"):
-            return Response({"error": "User not authenticated properly"}, status=401)
         deleted_count, _ = Favorite.objects.filter(
             user_id=request.user.id, token=token
         ).delete()
@@ -204,11 +201,9 @@ class TokenViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def manage(self, request, pk=None):
         token = self.get_object()
-        if not hasattr(request.user, "id"):
-            return Response({"error": "User not authenticated properly"}, status=401)
 
-        # if not IsTokenManager().has_object_permission(request, self, token):
-        #     return Response({'error': 'Permission denied'}, status=403)
+        if not IsTokenManager().has_object_permission(request, self, token):
+            return Response({"error": "Permission denied"}, status=403)
         if token.owner_id != request.user.id and request.user.role not in [
             "admin",
             "token_issuer",
@@ -245,6 +240,3 @@ class TokenViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": "Internal server error during token management"}, status=500
             )
-
-
-# ... (rest of the file, e.g., commented out FavoriteViewSet)

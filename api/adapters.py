@@ -176,11 +176,6 @@ class CustomAccountAdapter(DefaultAccountAdapter):
                 # 准备用户信息
                 user_info = {
                     "id": user.id,
-                    "email": user.email,
-                    "name": user.name,
-                    "avatar_url": user.avatar_url,
-                    "role": getattr(user, "role", None),
-                    "user_type": user.user_type,
                     "tokens": {
                         "access": access_token,
                         "refresh": refresh_token,
